@@ -1,8 +1,8 @@
-// package com.yemi.poultrydemo
+// package com.example.data_collect
 //
 // import androidx.compose.runtime.Composable
 // import androidx.compose.ui.tooling.preview.Preview
-// import com.yemi.poultrydemo.ui.FarmTheme
+// import com.example.data_collect.ui.FarmTheme
 //
 // @Preview(showBackground = true)
 // @Composable

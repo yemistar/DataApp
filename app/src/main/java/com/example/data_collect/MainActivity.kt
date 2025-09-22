@@ -1,4 +1,4 @@
-package com.yemi.poultrydemo
+package com.example.data_collect
 
 import android.app.Application
 import android.content.Context

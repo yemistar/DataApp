@@ -6,11 +6,11 @@ plugins {
 }
 
 android {
-    namespace = "com.yemi.poultrydemo"
+    namespace = "com.example.data_collect"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.yemi.poultrydemo"
+        applicationId = "com.example.data_collect"
         minSdk = 24
         targetSdk = 35
         versionCode = 1
