@@ -3,12 +3,14 @@ package com.example.data_collect
 import android.app.Application
 import android.content.Context
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -22,6 +24,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -29,7 +32,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenu
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
@@ -51,7 +53,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -74,7 +75,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.nio.charset.Charset
@@ -86,6 +86,7 @@ import java.util.Locale
 import java.util.UUID
 
 class MainActivity : ComponentActivity() {
+    @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -96,6 +97,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun PoultryApp(viewModel: AppViewModel = viewModel()) {
     val appState by viewModel.appState.collectAsStateWithLifecycle()
@@ -157,6 +159,7 @@ fun PoultryApp(viewModel: AppViewModel = viewModel()) {
 }
 
 
+@RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
@@ -258,6 +261,7 @@ fun MainScreen(
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun CaptureTab(
     selectedFlock: Flock,
@@ -582,6 +586,7 @@ fun CaptureTab(
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun DashboardTab(appState: AppState, selectedFlock: Flock) {
     val feedLogs = appState.logs.feed.filter { it.flockId == selectedFlock.id }
@@ -700,6 +705,7 @@ fun DashboardTab(appState: AppState, selectedFlock: Flock) {
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun VetViewTab(appState: AppState, selectedFlock: Flock) {
     val cutoff = LocalDate.now().minusDays(13)
@@ -1075,14 +1081,19 @@ data class AppState(
     val lastSyncAt: String? = null
 )
 
+
 private val Context.poultryDataStore by preferencesDataStore(name = "poultry_demo_store")
 
+@RequiresApi(Build.VERSION_CODES.O)
 class AppRepository(private val context: Context) {
     private val jsonKey = stringPreferencesKey("app_json")
     private val json = Json { prettyPrint = true; ignoreUnknownKeys = true }
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val mutex = Mutex()
+
+    @RequiresApi(Build.VERSION_CODES.O)
     private val _appState = MutableStateFlow(Seeds.defaultAppState())
+    @RequiresApi(Build.VERSION_CODES.O)
     val appState: StateFlow<AppState> = _appState.asStateFlow()
 
     init {
@@ -1124,6 +1135,7 @@ class AppRepository(private val context: Context) {
         update { it.copy(selectedFlockId = flockId) }
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     suspend fun addFeed(
         flockId: String,
         date: String,
@@ -1156,6 +1168,7 @@ class AppRepository(private val context: Context) {
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     suspend fun addMortality(
         flockId: String,
         date: String,
@@ -1216,6 +1229,7 @@ class AppRepository(private val context: Context) {
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     suspend fun addTreatment(
         flockId: String,
         date: String,
@@ -1248,6 +1262,7 @@ class AppRepository(private val context: Context) {
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     suspend fun addEnv(
         flockId: String,
         date: String,
@@ -1282,6 +1297,7 @@ class AppRepository(private val context: Context) {
         update { it.copy(pendingQueue = emptyList(), lastSyncAt = nowIso()) }
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     suspend fun exportToUri(uri: Uri): Boolean {
         val state = _appState.value
         return withContext(Dispatchers.IO) {
@@ -1329,13 +1345,17 @@ class AppRepository(private val context: Context) {
 }
 
 class AppViewModel(application: Application) : AndroidViewModel(application) {
+    @RequiresApi(Build.VERSION_CODES.O)
     private val repository = AppRepository(application.applicationContext)
+    @RequiresApi(Build.VERSION_CODES.O)
     val appState: StateFlow<AppState> = repository.appState
 
+    @RequiresApi(Build.VERSION_CODES.O)
     fun setSelectedFlock(flockId: String) {
         viewModelScope.launch { repository.setSelectedFlock(flockId) }
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     fun addFeedLog(
         flockId: String,
         date: String,
@@ -1347,6 +1367,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch { repository.addFeed(flockId, date, feedKg, feedType, cost, notes) }
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     fun addMortalityLog(
         flockId: String,
         date: String,
@@ -1357,6 +1378,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch { repository.addMortality(flockId, date, count, cause, notes) }
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     fun addEggLog(
         flockId: String,
         date: String,
@@ -1367,6 +1389,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch { repository.addEggs(flockId, date, collected, cracked, notes) }
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     fun addTreatmentLog(
         flockId: String,
         date: String,
@@ -1380,6 +1403,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     fun addEnvLog(
         flockId: String,
         date: String,
@@ -1390,10 +1414,12 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch { repository.addEnv(flockId, date, temperature, humidity, notes) }
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     fun simulateSync() {
         viewModelScope.launch { repository.simulateSync() }
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     fun exportToUri(uri: Uri, onResult: (Boolean) -> Unit) {
         viewModelScope.launch {
             val success = repository.exportToUri(uri)
@@ -1401,6 +1427,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     fun importFromUri(uri: Uri, onResult: (Boolean) -> Unit) {
         viewModelScope.launch {
             val success = repository.importFromUri(uri)
@@ -1410,6 +1437,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 }
 
 object Seeds {
+    @RequiresApi(Build.VERSION_CODES.O)
     fun defaultAppState(): AppState {
         val flockId = uid()
         val today = LocalDate.now()
@@ -1504,9 +1532,12 @@ object Seeds {
 
 fun uid(): String = UUID.randomUUID().toString().replace("-", "").take(8)
 
+@RequiresApi(Build.VERSION_CODES.O)
 fun today(): String = LocalDate.now().toString()
 
+@RequiresApi(Build.VERSION_CODES.O)
 fun nowIso(): String = Instant.now().toString()
 
+@RequiresApi(Build.VERSION_CODES.O)
 fun parseDate(date: String): LocalDate? = runCatching { LocalDate.parse(date) }.getOrNull()
 
