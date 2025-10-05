@@ -1,12 +1,15 @@
 package com.example.data_collect.ui.home
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
@@ -15,6 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.res.painterResource
@@ -36,7 +40,7 @@ fun PoultryTopBar(
                     Image(
                         painter = painterResource(id = com.example.data_collect.R.drawable.ic_launcher_background),
                         contentDescription = null,
-                        modifier = Modifier.size(28.dp)
+                        modifier = Modifier.size(28.dp).clip(CircleShape)
                     )
                     Spacer(Modifier.width(8.dp))
                     Text("Poultry Data")
@@ -51,8 +55,18 @@ fun PoultryTopBar(
 
         AnimatedVisibility(
             visible = expanded,
-            enter = slideInHorizontally { -it } + fadeIn(),
-            exit  = slideOutHorizontally { -it } + fadeOut()
+            enter = slideInHorizontally(
+                initialOffsetX = {-it},
+                animationSpec = tween(durationMillis = 450, easing = FastOutSlowInEasing)
+            ) + fadeIn(
+                animationSpec =  tween(durationMillis = 450, easing = FastOutSlowInEasing)
+            ),
+            exit  = slideOutHorizontally (
+                targetOffsetX = {-it},
+                animationSpec = tween(durationMillis = 450, easing = FastOutSlowInEasing)
+            ) + fadeOut(
+                animationSpec =  tween(durationMillis = 450, easing = FastOutSlowInEasing)
+            )
         ) {
             Row(
                 Modifier
