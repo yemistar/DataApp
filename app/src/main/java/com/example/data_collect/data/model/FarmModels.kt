@@ -97,7 +97,7 @@ data class Logs(
 
 @Serializable
 data class AppState(
-    val farmName: String = "Poultry Demo Farm",
+    val farmName: String = "Poultry Farm",
     val users: List<User> = emptyList(),
     val flocks: List<Flock> = emptyList(),
     val logs: Logs = Logs(),

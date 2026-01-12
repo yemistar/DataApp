@@ -2,15 +2,22 @@ package com.example.data_collect.data
 
 import android.content.Context
 import android.net.Uri
-import android.os.Build
-import androidx.annotation.RequiresApi
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import androidx.room.Room
+import androidx.room.withTransaction
+import com.example.data_collect.BuildConfig
+import com.example.data_collect.data.local.AppDatabase
+import com.example.data_collect.data.local.AppMetaEntity
+import com.example.data_collect.data.local.toDomain
+import com.example.data_collect.data.local.toEntity
+import com.example.data_collect.data.local.toMetaEntity
 import com.example.data_collect.data.model.AppState
 import com.example.data_collect.data.model.EggLog
 import com.example.data_collect.data.model.EnvLog
 import com.example.data_collect.data.model.FeedLog
+import com.example.data_collect.data.model.Logs
 import com.example.data_collect.data.model.MortalityLog
 import com.example.data_collect.data.model.PendingItem
 import com.example.data_collect.data.model.TreatmentLog
@@ -21,67 +28,75 @@ import java.util.LinkedHashMap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
-private val Context.poultryDataStore by preferencesDataStore(name = "poultry_demo_store")
+private const val DEFAULT_FARM_NAME = "Poultry Farm"
+private const val DB_NAME = "poultry.db"
 
-@RequiresApi(Build.VERSION_CODES.O)
+private val Context.legacyDataStore by preferencesDataStore(name = "poultry_demo_store")
+
 class AppRepository(private val context: Context) {
     private val jsonKey = stringPreferencesKey("app_json")
     private val json = Json { prettyPrint = true; ignoreUnknownKeys = true }
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val mutex = Mutex()
+    private val db = Room.databaseBuilder(context, AppDatabase::class.java, DB_NAME).build()
+    private val dao = db.appDao()
 
-    private val _appState = MutableStateFlow(Seeds.defaultAppState())
-    val appState: StateFlow<AppState> = _appState.asStateFlow()
+    private val logsFlow = combine(
+        dao.observeFeedLogs(),
+        dao.observeMortalityLogs(),
+        dao.observeEggLogs(),
+        dao.observeTreatmentLogs(),
+        dao.observeEnvLogs()
+    ) { feed, mortality, eggs, treatments, env ->
+        Logs(
+            feed = feed.map { it.toDomain() },
+            mortality = mortality.map { it.toDomain() },
+            eggs = eggs.map { it.toDomain() },
+            treatments = treatments.map { it.toDomain() },
+            environment = env.map { it.toDomain() },
+        )
+    }
+
+    private val appStateFlow = combine(
+        dao.observeMeta(),
+        dao.observeUsers(),
+        dao.observeFlocks(),
+        logsFlow,
+        dao.observePendingItems()
+    ) { meta, users, flocks, logs, pending ->
+        AppState(
+            farmName = meta?.farmName ?: DEFAULT_FARM_NAME,
+            users = users.map { it.toDomain() },
+            flocks = flocks.map { it.toDomain() },
+            logs = logs,
+            pendingQueue = pending.map { it.toDomain() },
+            selectedFlockId = meta?.selectedFlockId,
+            lastSyncAt = meta?.lastSyncAt,
+        )
+    }
+
+    val appState: StateFlow<AppState> = appStateFlow.stateIn(
+        scope,
+        SharingStarted.WhileSubscribed(5_000),
+        AppState(farmName = DEFAULT_FARM_NAME)
+    )
 
     init {
-        scope.launch {
-            val prefs = context.poultryDataStore.data.first()
-            val stored = prefs[jsonKey]
-            val initial = if (stored.isNullOrBlank()) {
-                val seeded = Seeds.defaultAppState()
-                context.poultryDataStore.edit { it[jsonKey] = json.encodeToString(seeded) }
-                seeded
-            } else {
-                runCatching { json.decodeFromString<AppState>(stored) }.getOrElse {
-                    val seeded = Seeds.defaultAppState()
-                    context.poultryDataStore.edit { it[jsonKey] = json.encodeToString(seeded) }
-                    seeded
-                }
-            }
-            _appState.value = initial
-        }
-    }
-
-    private suspend fun persist(state: AppState) {
-        withContext(Dispatchers.IO) {
-            context.poultryDataStore.edit { prefs ->
-                prefs[jsonKey] = json.encodeToString(state)
-            }
-        }
-    }
-
-    private suspend fun update(transform: (AppState) -> AppState) {
-        mutex.withLock {
-            val newState = transform(_appState.value)
-            _appState.value = newState
-            persist(newState)
-        }
+        scope.launch { ensureSeeded() }
     }
 
     suspend fun setSelectedFlock(flockId: String) {
-        update { it.copy(selectedFlockId = flockId) }
+        updateMeta { it.copy(selectedFlockId = flockId) }
     }
 
     suspend fun addFeed(
@@ -108,11 +123,9 @@ class AppRepository(private val context: Context) {
             payloadJson = json.encodeToString(feedLog),
             createdAt = nowIso(),
         )
-        update { state ->
-            state.copy(
-                logs = state.logs.copy(feed = listOf(feedLog) + state.logs.feed),
-                pendingQueue = listOf(pending) + state.pendingQueue,
-            )
+        db.withTransaction {
+            dao.upsertFeedLogs(listOf(feedLog.toEntity()))
+            dao.upsertPendingItems(listOf(pending.toEntity()))
         }
     }
 
@@ -138,11 +151,9 @@ class AppRepository(private val context: Context) {
             payloadJson = json.encodeToString(mortalityLog),
             createdAt = nowIso(),
         )
-        update { state ->
-            state.copy(
-                logs = state.logs.copy(mortality = listOf(mortalityLog) + state.logs.mortality),
-                pendingQueue = listOf(pending) + state.pendingQueue,
-            )
+        db.withTransaction {
+            dao.upsertMortalityLogs(listOf(mortalityLog.toEntity()))
+            dao.upsertPendingItems(listOf(pending.toEntity()))
         }
     }
 
@@ -168,11 +179,9 @@ class AppRepository(private val context: Context) {
             payloadJson = json.encodeToString(eggLog),
             createdAt = nowIso(),
         )
-        update { state ->
-            state.copy(
-                logs = state.logs.copy(eggs = listOf(eggLog) + state.logs.eggs),
-                pendingQueue = listOf(pending) + state.pendingQueue,
-            )
+        db.withTransaction {
+            dao.upsertEggLogs(listOf(eggLog.toEntity()))
+            dao.upsertPendingItems(listOf(pending.toEntity()))
         }
     }
 
@@ -200,11 +209,9 @@ class AppRepository(private val context: Context) {
             payloadJson = json.encodeToString(treatmentLog),
             createdAt = nowIso(),
         )
-        update { state ->
-            state.copy(
-                logs = state.logs.copy(treatments = listOf(treatmentLog) + state.logs.treatments),
-                pendingQueue = listOf(pending) + state.pendingQueue,
-            )
+        db.withTransaction {
+            dao.upsertTreatmentLogs(listOf(treatmentLog.toEntity()))
+            dao.upsertPendingItems(listOf(pending.toEntity()))
         }
     }
 
@@ -230,20 +237,21 @@ class AppRepository(private val context: Context) {
             payloadJson = json.encodeToString(envLog),
             createdAt = nowIso(),
         )
-        update { state ->
-            state.copy(
-                logs = state.logs.copy(environment = listOf(envLog) + state.logs.environment),
-                pendingQueue = listOf(pending) + state.pendingQueue,
-            )
+        db.withTransaction {
+            dao.upsertEnvLogs(listOf(envLog.toEntity()))
+            dao.upsertPendingItems(listOf(pending.toEntity()))
         }
     }
 
     suspend fun simulateSync() {
-        update { it.copy(pendingQueue = emptyList(), lastSyncAt = nowIso()) }
+        db.withTransaction {
+            dao.clearPendingItems()
+            updateMeta { it.copy(lastSyncAt = nowIso()) }
+        }
     }
 
     suspend fun exportToUri(uri: Uri): Boolean {
-        val state = _appState.value
+        val state = appState.first()
         return withContext(Dispatchers.IO) {
             runCatching {
                 context.contentResolver.openOutputStream(uri)?.use { output ->
@@ -259,8 +267,61 @@ class AppRepository(private val context: Context) {
             context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
         } ?: return false
         val incoming = runCatching { json.decodeFromString<AppState>(payload) }.getOrElse { return false }
-        update { mergeAppState(it, incoming) }
+        val current = appState.first()
+        val merged = mergeAppState(current, incoming)
+        replaceAll(merged)
         return true
+    }
+
+    private suspend fun ensureSeeded() {
+        if (migrateFromLegacyIfNeeded()) {
+            return
+        }
+        val hasData = dao.countFlocks() > 0 || dao.countUsers() > 0
+        val meta = dao.getMeta()
+        if (!hasData) {
+            if (BuildConfig.DEBUG) {
+                replaceAll(Seeds.defaultAppState())
+            } else if (meta == null) {
+                dao.upsertMeta(defaultMeta())
+            }
+        } else if (meta == null) {
+            dao.upsertMeta(defaultMeta())
+        }
+    }
+
+    private suspend fun migrateFromLegacyIfNeeded(): Boolean {
+        val prefs = context.legacyDataStore.data.first()
+        val stored = prefs[jsonKey] ?: return false
+        val legacy = runCatching { json.decodeFromString<AppState>(stored) }.getOrNull() ?: return false
+        replaceAll(legacy)
+        context.legacyDataStore.edit { it.remove(jsonKey) }
+        return true
+    }
+
+    private suspend fun updateMeta(transform: (AppMetaEntity) -> AppMetaEntity) {
+        val current = dao.getMeta() ?: defaultMeta()
+        dao.upsertMeta(transform(current))
+    }
+
+    private fun defaultMeta(): AppMetaEntity = AppMetaEntity(
+        farmName = DEFAULT_FARM_NAME,
+        selectedFlockId = null,
+        lastSyncAt = null
+    )
+
+    private suspend fun replaceAll(state: AppState) {
+        db.withTransaction {
+            dao.upsertMeta(state.toMetaEntity())
+            dao.upsertUsers(state.users.map { it.toEntity() })
+            dao.upsertFlocks(state.flocks.map { it.toEntity() })
+            dao.upsertFeedLogs(state.logs.feed.map { it.toEntity() })
+            dao.upsertMortalityLogs(state.logs.mortality.map { it.toEntity() })
+            dao.upsertEggLogs(state.logs.eggs.map { it.toEntity() })
+            dao.upsertTreatmentLogs(state.logs.treatments.map { it.toEntity() })
+            dao.upsertEnvLogs(state.logs.environment.map { it.toEntity() })
+            dao.upsertPendingItems(state.pendingQueue.map { it.toEntity() })
+        }
     }
 
     private fun mergeAppState(current: AppState, incoming: AppState): AppState {

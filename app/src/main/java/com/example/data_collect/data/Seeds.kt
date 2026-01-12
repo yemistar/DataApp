@@ -1,7 +1,5 @@
 package com.example.data_collect.data
 
-import android.os.Build
-import androidx.annotation.RequiresApi
 import com.example.data_collect.data.model.AppState
 import com.example.data_collect.data.model.EnvLog
 import com.example.data_collect.data.model.FeedLog
@@ -15,7 +13,6 @@ import com.example.data_collect.util.uid
 import java.time.LocalDate
 
 object Seeds {
-    @RequiresApi(Build.VERSION_CODES.O)
     fun defaultAppState(): AppState {
         val flockId = uid()
         val today = LocalDate.now()
@@ -90,13 +87,13 @@ object Seeds {
 
         val user = User(
             id = uid(),
-            name = "Demo Manager",
+            name = "Farm Manager",
             role = "manager",
             contact = "0800-000-0000",
         )
 
         return AppState(
-            farmName = "Poultry Demo Farm",
+            farmName = "Poultry Farm",
             users = listOf(user),
             flocks = listOf(flock),
             logs = Logs(

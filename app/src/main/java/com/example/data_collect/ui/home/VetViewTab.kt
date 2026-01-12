@@ -1,7 +1,5 @@
 package com.example.data_collect.ui.home
 
-import android.os.Build
-import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,7 +19,6 @@ import java.text.NumberFormat
 import java.time.LocalDate
 import java.util.Locale
 
-@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun VetViewTab(appState: AppState, selectedFlock: Flock) {
     val cutoff = LocalDate.now().minusDays(13)

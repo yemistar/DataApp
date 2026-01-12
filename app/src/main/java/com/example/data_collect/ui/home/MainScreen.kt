@@ -1,8 +1,6 @@
 package com.example.data_collect.ui.home
 
-import android.os.Build
 import android.widget.Toast
-import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
@@ -30,7 +28,6 @@ import com.example.data_collect.data.model.AppState
 import com.example.data_collect.ui.components.FlockSelector
 import com.example.data_collect.ui.components.SectionCard
 
-@RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(

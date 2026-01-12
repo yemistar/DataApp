@@ -1,10 +1,8 @@
 package com.example.data_collect.ui
 
-import android.os.Build
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.annotation.RequiresApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
@@ -16,7 +14,6 @@ import com.example.data_collect.ui.home.MainScreen
 import com.example.data_collect.util.today
 import com.example.data_collect.viewmodel.AppViewModel
 
-@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun PoultryApp(viewModel: AppViewModel = viewModel()) {
     val appState by viewModel.appState.collectAsStateWithLifecycle()
