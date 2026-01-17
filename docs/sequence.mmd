@@ -1,0 +1,63 @@
+sequenceDiagram
+    autonumber
+    actor User
+    participant MainActivity
+    participant PoultryApp
+    participant MainScreen
+    participant AppViewModel
+    participant AppRepository
+    participant Room as Room DB
+    participant Legacy as Legacy DataStore
+    participant DocPicker
+    participant ContentResolver
+
+    User->>MainActivity: Launch app
+    MainActivity->>PoultryApp: setContent()
+    PoultryApp->>AppViewModel: viewModel()
+
+    AppRepository-->>AppViewModel: appState Flow
+    AppRepository->>Room: observe tables (meta/users/flocks/logs/pending)
+    Room-->>AppRepository: streams
+    AppRepository-->>PoultryApp: AppState
+    PoultryApp->>MainScreen: render state
+
+    AppRepository->>Legacy: check legacy JSON
+    alt Legacy data exists
+        Legacy-->>AppRepository: JSON
+        AppRepository->>Room: replaceAll(legacy)
+        AppRepository->>Legacy: clear legacy key
+    else No legacy data
+        AppRepository->>Room: ensure meta (seed in debug)
+    end
+
+    User->>MainScreen: Add Feed/Mortality/Eggs/Treatment/Environment
+    MainScreen->>AppViewModel: addX(...)
+    AppViewModel->>AppRepository: addX(...)
+    AppRepository->>Room: transaction upsert log + pending item
+    Room-->>AppRepository: updated rows
+    AppRepository-->>MainScreen: updated AppState
+
+    User->>MainScreen: Change selected flock
+    MainScreen->>AppViewModel: setSelectedFlock(flockId)
+    AppViewModel->>AppRepository: setSelectedFlock(...)
+    AppRepository->>Room: update meta.selectedFlockId
+
+    User->>MainScreen: Sync
+    MainScreen->>AppViewModel: simulateSync()
+    AppViewModel->>AppRepository: simulateSync()
+    AppRepository->>Room: clear pending + update meta.lastSyncAt
+
+    User->>PoultryApp: Export
+    PoultryApp->>DocPicker: CreateDocument
+    DocPicker-->>PoultryApp: URI
+    PoultryApp->>AppRepository: exportToUri(uri)
+    AppRepository->>ContentResolver: write JSON to URI
+
+    User->>PoultryApp: Import
+    PoultryApp->>DocPicker: OpenDocument
+    DocPicker-->>PoultryApp: URI
+    PoultryApp->>AppRepository: importFromUri(uri)
+    AppRepository->>ContentResolver: read JSON
+    AppRepository->>Room: merge + replaceAll
+    Room-->>AppRepository: updated rows
+    AppRepository-->>MainScreen: updated AppState
