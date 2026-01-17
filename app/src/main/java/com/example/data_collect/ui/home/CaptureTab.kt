@@ -1,8 +1,6 @@
 package com.example.data_collect.ui.home
 
-import android.os.Build
 import android.widget.Toast
-import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -27,7 +25,6 @@ import com.example.data_collect.data.model.Flock
 import com.example.data_collect.ui.components.SectionCard
 import com.example.data_collect.util.today
 
-@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun CaptureTab(
     selectedFlock: Flock,

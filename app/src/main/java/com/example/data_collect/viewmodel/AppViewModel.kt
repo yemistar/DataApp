@@ -2,8 +2,6 @@ package com.example.data_collect.viewmodel
 
 import android.app.Application
 import android.net.Uri
-import android.os.Build
-import androidx.annotation.RequiresApi
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data_collect.data.AppRepository
@@ -11,7 +9,6 @@ import com.example.data_collect.data.model.AppState
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
-@RequiresApi(Build.VERSION_CODES.O)
 class AppViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = AppRepository(application.applicationContext)
     val appState: StateFlow<AppState> = repository.appState
