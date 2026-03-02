@@ -3,6 +3,7 @@ set -euo pipefail
 
 PROJECT_DIR="${1:-$(pwd)}"
 GRADLE_TASKS="${GRADLE_TASKS:-clean assembleDebug testDebugUnitTest lintDebug}"
+WRITE_LOCAL_PROPERTIES="${WRITE_LOCAL_PROPERTIES:-auto}"
 
 if [ ! -d "${PROJECT_DIR}" ]; then
   echo "Project directory not found: ${PROJECT_DIR}"
@@ -17,6 +18,19 @@ fi
 export ANDROID_SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-${HOME}/android-sdk}}"
 export ANDROID_HOME="${ANDROID_SDK_ROOT}"
 export PATH="${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin:${ANDROID_SDK_ROOT}/platform-tools:${ANDROID_SDK_ROOT}/emulator:${PATH}"
+
+if [ "${WRITE_LOCAL_PROPERTIES}" = "auto" ]; then
+  if [[ "${PROJECT_DIR}" == /workspace/* ]]; then
+    WRITE_LOCAL_PROPERTIES=1
+  else
+    WRITE_LOCAL_PROPERTIES=0
+  fi
+fi
+
+if [ "${WRITE_LOCAL_PROPERTIES}" = "1" ]; then
+  printf "sdk.dir=%s\n" "${ANDROID_SDK_ROOT}" > "${PROJECT_DIR}/local.properties"
+  echo "Wrote ${PROJECT_DIR}/local.properties with sdk.dir=${ANDROID_SDK_ROOT}"
+fi
 
 echo "== Tool versions =="
 java -version || true

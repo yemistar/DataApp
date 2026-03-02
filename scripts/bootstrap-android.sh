@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+PROJECT_DIR="${1:-}"
 ANDROID_CMDLINE_TOOLS_ZIP="${ANDROID_CMDLINE_TOOLS_ZIP:-commandlinetools-linux-13114758_latest.zip}"
 ANDROID_API_LEVEL="${ANDROID_API_LEVEL:-35}"
 ANDROID_BUILD_TOOLS="${ANDROID_BUILD_TOOLS:-35.0.0}"
@@ -66,6 +67,19 @@ sdkmanager --install \
   "build-tools;${ANDROID_BUILD_TOOLS}" \
   "emulator" \
   "system-images;android-${ANDROID_API_LEVEL};google_apis;x86_64"
+
+if ! grep -q "ANDROID_SDK_ROOT=.*cmdline-tools/latest/bin" "${HOME}/.bashrc" 2>/dev/null; then
+  cat >> "${HOME}/.bashrc" <<EOF
+export ANDROID_SDK_ROOT="${ANDROID_SDK_ROOT}"
+export ANDROID_HOME="\${ANDROID_SDK_ROOT}"
+export PATH="\${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin:\${ANDROID_SDK_ROOT}/platform-tools:\${ANDROID_SDK_ROOT}/emulator:\${PATH}"
+EOF
+fi
+
+if [ -n "${PROJECT_DIR}" ] && [ -d "${PROJECT_DIR}" ] && [ -f "${PROJECT_DIR}/gradlew" ]; then
+  printf "sdk.dir=%s\n" "${ANDROID_SDK_ROOT}" > "${PROJECT_DIR}/local.properties"
+  echo "Wrote ${PROJECT_DIR}/local.properties with sdk.dir=${ANDROID_SDK_ROOT}"
+fi
 
 cat <<EOF
 
