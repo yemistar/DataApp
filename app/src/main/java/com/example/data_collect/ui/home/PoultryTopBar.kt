@@ -1,105 +1,165 @@
 package com.example.data_collect.ui.home
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.data_collect.ui.components.FieldChip
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PoultryTopBar(
+    pendingCount: Int,
+    lastSyncAt: String?,
     onSync: () -> Unit,
     onExport: () -> Unit,
     onImport: () -> Unit
 ) {
-    var expanded by rememberSaveable { mutableStateOf(false) }
+    var showBackupSheet by rememberSaveable { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    Column(Modifier.fillMaxWidth()) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         TopAppBar(
             title = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Image(
-                        painter = painterResource(id = com.example.data_collect.R.drawable.ic_launcher_background),
-                        contentDescription = null,
-                        modifier = Modifier.size(28.dp).clip(CircleShape)
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text("Poultry Data")
+                    Surface(
+                        modifier = Modifier.size(36.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.primary
+                    ) {}
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column {
+                        Text(
+                            text = "Poultry Data",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "Field ops logbook",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             },
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = MaterialTheme.colorScheme.background,
+                titleContentColor = MaterialTheme.colorScheme.onBackground
+            ),
             actions = {
-                IconButton(onClick = { expanded = !expanded }) {
-                    Icon(imageVector = Icons.Filled.MoreVert, contentDescription = "Menu")
+                IconButton(onClick = { showBackupSheet = true }) {
+                    Icon(imageVector = Icons.Filled.MoreVert, contentDescription = "Sync and backup")
                 }
             }
         )
+    }
 
-        AnimatedVisibility(
-            visible = expanded,
-            enter = slideInHorizontally(
-                initialOffsetX = {-it},
-                animationSpec = tween(durationMillis = 450, easing = FastOutSlowInEasing)
-            ) + fadeIn(
-                animationSpec =  tween(durationMillis = 450, easing = FastOutSlowInEasing)
-            ),
-            exit  = slideOutHorizontally (
-                targetOffsetX = {-it},
-                animationSpec = tween(durationMillis = 450, easing = FastOutSlowInEasing)
-            ) + fadeOut(
-                animationSpec =  tween(durationMillis = 450, easing = FastOutSlowInEasing)
-            )
+    if (showBackupSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showBackupSheet = false },
+            sheetState = sheetState,
+            containerColor = MaterialTheme.colorScheme.surface
         ) {
-            Row(
-                Modifier
+            Column(
+                modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    .padding(horizontal = 20.dp)
+                    .padding(bottom = 28.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                val shape = RoundedCornerShape(50)
-                val green = Color(0xFF1E7A3D)
-                ActionChip("Sync", onSync, green, shape)
-                ActionChip("Export", onExport, green, shape)
-                ActionChip("Import", onImport, green, shape)
+                Text(
+                    text = "Sync & backup",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FieldChip(label = "Pending $pendingCount")
+                    FieldChip(label = lastSyncAt?.let { "Synced" } ?: "Not synced")
+                    FieldChip(label = "Offline ready")
+                }
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                ) {
+                    Column(
+                        modifier = Modifier.padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = "Pending queue",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(text = "$pendingCount records waiting for sync")
+                        Text(text = "Last sync: ${lastSyncAt ?: "Never"}")
+                    }
+                }
+                Button(
+                    onClick = {
+                        showBackupSheet = false
+                        onSync()
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text("Sync now")
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(
+                        onClick = {
+                            showBackupSheet = false
+                            onExport()
+                        },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text("Export")
+                    }
+                    OutlinedButton(
+                        onClick = {
+                            showBackupSheet = false
+                            onImport()
+                        },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text("Import")
+                    }
+                }
             }
         }
-    }
-}
-
-@Composable
-private fun ActionChip(
-    label: String,
-    onClick: () -> Unit,
-    container: Color,
-    shape: Shape
-) {
-    TextButton(
-        onClick = onClick,
-        shape = shape,
-        colors = ButtonDefaults.textButtonColors(
-            containerColor = container,
-            contentColor = Color.White
-        ),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
-    ) {
-        Text(label)
     }
 }

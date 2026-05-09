@@ -1,6 +1,7 @@
 package com.example.data_collect.data
 
 import com.example.data_collect.data.model.AppState
+import com.example.data_collect.data.model.EggLog
 import com.example.data_collect.data.model.EnvLog
 import com.example.data_collect.data.model.FeedLog
 import com.example.data_collect.data.model.Flock
@@ -15,6 +16,7 @@ import java.time.LocalDate
 object Seeds {
     fun defaultAppState(): AppState {
         val flockId = uid()
+        val layerFlockId = uid()
         val today = LocalDate.now()
         val startDate = today.minusDays(14)
         val flock = Flock(
@@ -25,8 +27,16 @@ object Seeds {
             initialCount = 200,
             notes = "Starter batch",
         )
+        val layerFlock = Flock(
+            id = layerFlockId,
+            name = "Layer House",
+            type = "layers",
+            startDate = today.minusDays(62).toString(),
+            initialCount = 120,
+            notes = "Demo layer flock for egg production logs",
+        )
 
-        val feedLogs = (0 until 10).map { index ->
+        val broilerFeedLogs = (0 until 10).map { index ->
             val date = today.minusDays((9 - index).toLong()).toString()
             FeedLog(
                 id = uid(),
@@ -38,6 +48,19 @@ object Seeds {
                 createdAt = nowIso(),
             )
         }
+        val layerFeedLogs = (0 until 7).map { index ->
+            val date = today.minusDays((6 - index).toLong()).toString()
+            FeedLog(
+                id = uid(),
+                flockId = layerFlockId,
+                date = date,
+                feedKg = 14.0 + (0.25 * index),
+                feedType = "Layer mash",
+                cost = 11200.0 + (120 * index),
+                createdAt = nowIso(),
+            )
+        }
+        val feedLogs = broilerFeedLogs + layerFeedLogs
 
         val mortalityDays = listOf(0, 3, 6, 9)
         val mortalityLogs = mortalityDays.map { offset ->
@@ -50,7 +73,14 @@ object Seeds {
                 cause = "Weakness",
                 createdAt = nowIso(),
             )
-        }
+        } + MortalityLog(
+            id = uid(),
+            flockId = layerFlockId,
+            date = today.minusDays(5).toString(),
+            count = 1,
+            cause = "Injury",
+            createdAt = nowIso(),
+        )
 
         val envLogs = (0 until 10 step 2).map { index ->
             val date = today.minusDays((9 - index).toLong()).toString()
@@ -60,6 +90,17 @@ object Seeds {
                 date = date,
                 temperatureC = 29.0 + ((index / 2) % 3),
                 humidityPercent = 65.0 + (index / 2),
+                createdAt = nowIso(),
+            )
+        }
+        val eggLogs = (0 until 7).map { index ->
+            val date = today.minusDays((6 - index).toLong()).toString()
+            EggLog(
+                id = uid(),
+                flockId = layerFlockId,
+                date = date,
+                collected = 88 + index,
+                cracked = if (index % 3 == 0) 2 else 1,
                 createdAt = nowIso(),
             )
         }
@@ -95,11 +136,11 @@ object Seeds {
         return AppState(
             farmName = "Poultry Farm",
             users = listOf(user),
-            flocks = listOf(flock),
+            flocks = listOf(flock, layerFlock),
             logs = Logs(
                 feed = feedLogs,
                 mortality = mortalityLogs,
-                eggs = emptyList(),
+                eggs = eggLogs,
                 treatments = treatmentLogs,
                 environment = envLogs,
             ),
