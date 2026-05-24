@@ -28,13 +28,31 @@ Offline-first Android app for capturing poultry farm operations data in the fiel
 
 ## Architecture
 
-![Sequence diagram](docs/sequence.svg)
+```mermaid
+flowchart TD
+    UI["Compose UI<br/>Capture, Dashboard, Vet View, Sync Sheet"]
+    VM["AppViewModel<br/>Routes actions and exposes StateFlow<AppState>"]
+    Repo["AppRepository<br/>Combines Room flows and writes transactions"]
+    Room[("Room database<br/>Local source of truth")]
+    Boundary["Repository boundaries<br/>JSON import/export, legacy migration, pending outbox"]
+
+    UI --> VM
+    VM --> Repo
+    Repo --> Room
+    Room --> Repo
+    Repo --> VM
+    VM --> UI
+    Repo -.-> Boundary
+```
+
+Read the diagram top to bottom: Compose owns the field screens, the ViewModel routes user actions, the repository coordinates local data work, and Room remains the source of truth. Backup/import, legacy migration, and future sync are kept behind the repository boundary so the capture screens stay focused on field workflows.
 
 - UI: Compose screens in `app/src/main/java/com/example/data_collect/ui`
 - State: `AppViewModel` exposes `StateFlow<AppState>` to the UI
 - Data: `AppRepository` combines Room flows into one `AppState`, handles import/export, and writes offline pending items
 - Storage: Room entities, DAO, database, and mappers live in `app/src/main/java/com/example/data_collect/data/local`
 - Migration: legacy JSON in DataStore is migrated once into Room on startup
+- Flow: UI events call the ViewModel, the repository writes Room transactions, and Room flows rebuild the app state shown by Compose
 - Decisions: [docs/decisions.md](docs/decisions.md)
 
 ## Data Model
@@ -70,6 +88,6 @@ The script defaults to `clean assembleDebug testDebugUnitTest lintDebug`. Connec
 
 ## Project Notes
 
-- Mermaid source lives at `docs/sequence.mmd`.
+- The README architecture diagram is intentionally high level; detailed launch, migration, capture, sync, import, and export Mermaid source lives at `docs/sequence.mmd`.
 - Debug seed data includes one broiler flock and one layer flock so reviewers can exercise feed, mortality, egg, treatment, environment, dashboard, and vet-summary flows.
 - This repo is a proof project, not a production farm-management backend.
